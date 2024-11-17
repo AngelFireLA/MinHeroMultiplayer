@@ -207,8 +207,6 @@ class Minion:
         charge_allies_it_hits_str = "~".join(map(str, self.charge_allies_it_hits))
         charge_enemies_it_hits_str = "~".join(map(str, self.charge_enemies_it_hits))
         all_moves_str = "~".join(map(str, self.all_moves))
-        active_moves_str = "~".join(map(str, self.active_moves))
-        global_moves_str = "~".join(map(str, self.global_moves))
 
         return (
             f"minionID§{self.minion_id}|minionDexID§{self.minion_dex_id}|minionName§\"{self.minion_name}\"|"
@@ -219,3 +217,7 @@ class Minion:
             f"currShield§{self.curr_shield}|maxShield§{self.max_shield}|isBattleModShieldActive§{str(self.is_battle_mod_shield_active).lower()}|"
             f"allMoves§{all_moves_str}|"
         )
+
+    def save_to_text(self):
+        with open(f"minions/minion_{self.minion_id}.txt", "w", encoding="utf-8") as file:
+            file.write(self.to_custom_string())

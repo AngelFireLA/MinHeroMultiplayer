@@ -1,29 +1,28 @@
 import random
-
-import matplotlib
 import numpy as np
 from min_hero_classes import Minion, BaseMinion, Gem
-
+import os
 import socket
 import threading
 import ast
-matplotlib.use('Agg')  # Use a non-interactive backend
+
+if not os.path.exists("active_minions"):
+    os.makedirs("active_minions")
+
+if not os.path.exists("minions"):
+    os.makedirs("minions")
 
 
-def is_ally(minion_id, minions):
-    for minion in minions:
-        if minion["minion_id"] == minion_id:
-            return minion["side"] == "ally"
-    return False
-
-
-def select_target_positions(minions, is_ally_turn):
-    valid_positions = []
-    for minion in minions:
-        if minion["currHealth"] > 0:
-            if (is_ally_turn and minion["side"] == "enemy") or (not is_ally_turn and minion["side"] == "ally"):
-                valid_positions.append(minion["position"])
-    return valid_positions
+#load the content of every file inside the minions folder in a list, the list is order by file last modification
+def load_minions():
+    file_list = os.listdir("active_minions")
+    file_list.sort(key=lambda x: os.path.getmtime(f"active_minions/{x}"))
+    minions = []
+    for file in file_list:
+        with open(f"active_minions/{file}", 'r', encoding="utf-8") as f:
+            minion_data = f.read()
+            minions.append(minion_data)
+    return minions
 
 
 class GameSocketServer:
@@ -31,8 +30,10 @@ class GameSocketServer:
         self.host = host
         self.port = port
         self.server_socket = None
+        self.minions = load_minions()
 
     def start_server(self):
+
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
@@ -44,33 +45,55 @@ class GameSocketServer:
             threading.Thread(target=self.handle_client, args=(client_socket,)).start()
 
     def handle_client(self, client_socket):
-        move_ids = None
-        minions = []
-        minion_id = None
-        turn_count = 0
+        buffer = ''
         try:
+            i = 0
             while True:
-                data = str(client_socket.recv(8192).decode('utf-8'))
-                if turn_count == 0:
-                    print(data.replace('null', "None").replace("true", "True").replace("false", "False"))
-                    minion = Minion.from_dict(ast.literal_eval(data.replace('null', "None").replace("true", "True").replace("false", "False")))
-                    self.send_data(client_socket, minion.to_custom_string())
-                    turn_count+=1
+                i+=1
+                print(f"i: {i}")
+                data = client_socket.recv(8192).decode('utf-8')
+                if not data:
+                    break
+                buffer += data
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    if line.startswith("@"):
+                        line = line[1:]  # Remove "@"
+                        index_and_data = line.split("¨", 1)
+                        if len(index_and_data) == 2:
+                            index_str, minion_data = index_and_data
+                            index = int(index_str)
+                            print(f"Received minion data for index {index}")
+                            minion_dict = ast.literal_eval(
+                                minion_data.replace('null', "None").replace("true", "True").replace("false", "False"))
+                            minion = Minion.from_dict(minion_dict)
+                            minion.save_to_text()
+                            # Include index when sending back data with delimiter
+                            response = f"{4-index}¨{minion.to_custom_string()}\n"
+                            self.send_data(client_socket, response)
+                        else:
+                            print("Invalid data format received.")
+                    elif line.startswith("set_minions"):
+                        print("Received request to send back minions.")
+                        self.minions = load_minions()
+                        response = ""
+                        for i, minion in enumerate(self.minions):
+                            response += f"{i}¨{minion}\n"
+                        self.send_data(client_socket, response)
 
 
         except ConnectionResetError as e:
             print(e)
-            pass
         finally:
             client_socket.close()
-            self.server_socket.close()
             print("closed")
 
     @staticmethod
     def send_data(client_socket, message):
         try:
-            client_socket.sendall(message.encode('utf-8'))
-            print(f"Sent data: {message}")
+            message_with_delimiter = message + '\n'  # Append newline as a delimiter
+            client_socket.sendall(message_with_delimiter.encode('utf-8'))
+            print(f"Sent data: {message_with_delimiter}")
         except Exception as e:
             print(f"Failed to send data: {e}")
 
