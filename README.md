@@ -13,7 +13,7 @@ In-work project of bringing pvp battles to Min hero Tower of Sages
 (0. Be sure to have followed the usage steps)
 1. Open your settings while in a save
 2. Toggle "Export Team"
-3. Done, your team's minions' files are saved in the "minions" folder
+3. Done, your team's minions' files are saved in the "minions" folder (one file per minion)
 
 ## How to import a team
 (0. Be sure to have followed the usage steps)
