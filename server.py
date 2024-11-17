@@ -1,5 +1,4 @@
 import random
-import numpy as np
 from min_hero_classes import Minion, BaseMinion, Gem
 import os
 import socket
@@ -68,9 +67,6 @@ class GameSocketServer:
                                 minion_data.replace('null', "None").replace("true", "True").replace("false", "False"))
                             minion = Minion.from_dict(minion_dict)
                             minion.save_to_text()
-                            # Include index when sending back data with delimiter
-                            response = f"{4-index}¨{minion.to_custom_string()}\n"
-                            self.send_data(client_socket, response)
                         else:
                             print("Invalid data format received.")
                     elif line.startswith("set_minions"):
