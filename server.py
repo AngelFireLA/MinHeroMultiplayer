@@ -94,15 +94,23 @@ class GameSocketServer:
                         self.send_data(client_socket, response)
                     elif line.startswith("receive_minions_from"):
                         target_username = line.split(" ")[1]
-                        if target_username in self.clients and self.clients[target_username].minions:
-                            target_client = self.clients[target_username]
+                        if target_username == current_client.username:
+                            print("Received request to send back minions.")
+                            self.minions = load_minions()
                             response = ""
-                            for i, minion in enumerate(target_client.minions):
+                            for i, minion in enumerate(self.minions):
                                 response += f"{i}¨{minion}\n"
                             self.send_data(client_socket, response)
-                            print(f"Successfully receieved minions from target client {target_username}.")
                         else:
-                            print(f"Target client {target_username} doesn't exist or doesn't have any minion loaded.")
+                            if target_username in self.clients and self.clients[target_username].minions:
+                                target_client = self.clients[target_username]
+                                response = ""
+                                for i, minion in enumerate(target_client.minions):
+                                    response += f"{i}¨{minion}\n"
+                                self.send_data(client_socket, response)
+                                print(f"Successfully receieved minions from target client {target_username}.")
+                            else:
+                                print(f"Target client {target_username} doesn't exist or doesn't have any minion loaded.")
                     elif line.startswith("send_minions_to"):
                         target_username = line.split(" ")[1]
                         if target_username in self.clients:
