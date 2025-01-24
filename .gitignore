@@ -4,3 +4,6 @@
 default.swf - Raccourci.lnk
 Logs - Raccourci.lnk
 MinHeroMultiplayer.zip
+*.pyc
+/minions
+/test_clients

@@ -220,4 +220,6 @@ class Minion:
 
     def save_to_text(self):
         with open(f"minions/minion_{self.minion_id}.txt", "w", encoding="utf-8") as file:
-            file.write(self.to_custom_string())
+            custom_string = self.to_custom_string()
+            file.write(custom_string)
+            return custom_string

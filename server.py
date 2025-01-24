@@ -1,4 +1,6 @@
 import random
+import time
+
 from min_hero_classes import Minion, BaseMinion, Gem
 import os
 import socket
@@ -30,6 +32,7 @@ class GameSocketServer:
         self.port = port
         self.server_socket = None
         self.minions = load_minions()
+        self.clients = {}
 
     def start_server(self):
 
@@ -47,6 +50,7 @@ class GameSocketServer:
         buffer = ''
         try:
             i = 0
+            current_client = None
             while True:
                 i+=1
                 print(f"i: {i}")
@@ -56,17 +60,29 @@ class GameSocketServer:
                 buffer += data
                 while '\n' in buffer:
                     line, buffer = buffer.split('\n', 1)
-                    if line.startswith("@"):
+                    if line.startswith("@login:"):
+                        username = line.split("@login:")[1]
+                        if username in self.clients:
+                            raise ValueError("Two clients with the same name tried to connect")
+                        current_client = Client(username, client_socket)
+                        self.clients[username] = current_client
+                        print(f"New Client of username {username} connected.")
+                    elif line.startswith("@"):
                         line = line[1:]  # Remove "@"
                         index_and_data = line.split("¨", 1)
                         if len(index_and_data) == 2:
+                            if current_client.minions:
+                                if time.time() - current_client.time_since_team_update > 5 or len(current_client.minions) == 5:
+                                    current_client.minions = []
+                                    current_client.time_since_team_update = time.time()
                             index_str, minion_data = index_and_data
                             index = int(index_str)
                             print(f"Received minion data for index {index}")
                             minion_dict = ast.literal_eval(
                                 minion_data.replace('null', "None").replace("true", "True").replace("false", "False"))
                             minion = Minion.from_dict(minion_dict)
-                            minion.save_to_text()
+                            minion_string = minion.save_to_text()
+                            current_client.minions.append(minion_string)
                         else:
                             print("Invalid data format received.")
                     elif line.startswith("set_minions"):
@@ -76,13 +92,37 @@ class GameSocketServer:
                         for i, minion in enumerate(self.minions):
                             response += f"{i}¨{minion}\n"
                         self.send_data(client_socket, response)
+                    elif line.startswith("receive_minions_from"):
+                        target_username = line.split(" ")[1]
+                        if target_username in self.clients and self.clients[target_username].minions:
+                            target_client = self.clients[target_username]
+                            response = ""
+                            for i, minion in enumerate(target_client.minions):
+                                response += f"{i}¨{minion}\n"
+                            self.send_data(client_socket, response)
+                            print(f"Successfully receieved minions from target client {target_username}.")
+                        else:
+                            print(f"Target client {target_username} doesn't exist or doesn't have any minion loaded.")
+                    elif line.startswith("send_minions_to"):
+                        target_username = line.split(" ")[1]
+                        if target_username in self.clients:
+                            target_client = self.clients[target_username]
+                            response = ""
+                            for i, minion in enumerate(current_client.minions):
+                                response += f"{i}¨{minion}\n"
+                            self.send_data(target_client.client_socket, response)
 
 
         except ConnectionResetError as e:
             print(e)
         finally:
+
             client_socket.close()
             print("closed")
+            #remove username with the client_socket form self.clients
+            for username, client in self.clients.items():
+                if client == client_socket:
+                    del self.clients[username]
 
     @staticmethod
     def send_data(client_socket, message):
@@ -93,6 +133,12 @@ class GameSocketServer:
         except Exception as e:
             print(f"Failed to send data: {e}")
 
+class Client:
+    def __init__(self, username, client_socket):
+        self.username = username
+        self.client_socket = client_socket
+        self.minions = []
+        self.time_since_team_update = time.time()
 
 if __name__ == "__main__":
     server = GameSocketServer()
