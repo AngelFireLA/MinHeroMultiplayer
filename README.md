@@ -9,10 +9,10 @@ You can export your team as text files to share them, and you can also import en
 2. Open two terminals in the project folder
 3. On the first one run the command 'python policy_server.py'
 4. On the second one run the command 'python server.py'
-5. Run the start.bat to build the modded exe
+(5. If you don't want to use the included modded Flash.Exe : Run the start.bat to build the modded exe=
 6. Go in config.txt and pick a unique username.
-6. Run the generated Flash.exe
-7. Enjoy (you will have to do steps 2 to 4 each time)
+7. Run the Flash.exe
+8. Enjoy (you will have to do steps 2 to 4 each time)
 
 ## How to export my team
 1. Open your settings while in a save
