@@ -4,6 +4,7 @@ You can export your team as text files to share them, and you can also import en
 
 ## How to use
 (0. Install python 3.11 and be sure to tick the box "Add Python to PATH" during the installation on the first screen of the installer, at the bottom)
+(0.1 Install NodeJS)
 1. Download the project and extract it
 2. Open two terminals in the project folder
 3. On the first one run the command 'python policy_server.py'
