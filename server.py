@@ -54,13 +54,32 @@ class GameSocketServer:
             time.sleep(1)
             current_client = self.clients[player_username]
             client_socket = current_client.client_socket
+            if "-1" in str(move):
+                print(f"Player {player_username} tried to send an invalid move: {move}")
             if target_username == current_client.username:
                 print("Sending Move")
-                self.send_data(client_socket, "%move:-1#%targets:-1")
+                response = f"%move:{move}#%targets:-1"
+                # response += "&"
+                # if target_client.unfrozen:
+                #     response += "1"
+                # else:
+                #     response += "0"
+                # if target_client.unstunned:
+                #     response += "1"
+                # else:
+                #     response += "0"
+                self.send_data(client_socket, response)
             else:
                 # targets are separater by a | with the target tuple's content separated by _
                 targets_str = "|".join([f"{target[0]}_{target[1]}" for target in targets])
                 response = f"%move:{move}#%targets:{targets_str}"
+                # response += "&"
+                # if target_client.unfrozen:
+                #     response += "1"
+                # else:
+                #     response += "0"
+                # if target_client.unstunned:
+                #     response += "1"
                 time.sleep(1)
                 self.send_data(client_socket, response)
                 print(f"Successfully sent move to client {player_username}.")
@@ -76,7 +95,8 @@ class GameSocketServer:
                 i+=1
                 print(f"i: {i}")
                 data = client_socket.recv(8192).decode('utf-8')
-                print(data)
+                if "%plzresend" not in data:
+                    print(current_username, data)
                 if not data:
                     break
                 buffer += data
@@ -158,16 +178,17 @@ class GameSocketServer:
                             if len(segment.split("_")) == 2
                         ]
                     elif line.startswith("||battle:send_move"):
-
                         if target_client.current_battle_move and target_client.targets:
                             sendMove(current_username, target_username, target_client.current_battle_move, target_client.targets)
                             target_client.current_battle_move = None
                             target_client.targets = None
                         else:
-                            print(f"{i} could not send move, retrying in 1 second")
-                            time.sleep(3)
+                            time.sleep(0.1)
                             self.send_data(client_socket, "%plzresend")
-
+                    elif line.startswith("||battle:unfreeze_ennemy"):
+                        self.send_data(target_client.client_socket, line)
+                    elif line.startswith("||battle:unfreeze_ally"):
+                        self.send_data(target_client.client_socket, line)
         except ConnectionResetError as e:
             print(e)
         finally:
@@ -185,7 +206,8 @@ class GameSocketServer:
         try:
             message_with_delimiter = message + '\n'  # Append newline as a delimiter
             client_socket.sendall(message_with_delimiter.encode('utf-8'))
-            print(f"Sent data: {message_with_delimiter}")
+            if "%plzresend" not in message_with_delimiter:
+                print(f"Sent data: {message_with_delimiter}")
         except Exception as e:
             print(f"Failed to send data: {e}")
 
@@ -198,6 +220,8 @@ class Client:
         self.time_since_team_update = time.time()
         self.current_battle_move = None
         self.targets = None
+        self.unfrozen = False
+        self.unstunned = False
 
 if __name__ == "__main__":
     server = GameSocketServer(host="0.0.0.0")

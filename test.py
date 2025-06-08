@@ -30,6 +30,6 @@ def search_in_files(folder_path, target_string):
 # Example usage
 if __name__ == "__main__":
     folder_to_search = r'C:\Users\marie\Documents\XuanZhi9\scripts'
-    string_to_search = '+ 5'
+    string_to_search = 'Math.random() * 100'
 
     search_in_files(folder_to_search, string_to_search)
