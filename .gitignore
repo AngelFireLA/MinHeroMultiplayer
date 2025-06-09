@@ -1,8 +1,10 @@
+#files created from Python execution: not needed to be uploaded
 /__pycache__
-/backups
 *.pyc
+#realtime folders, from execution
 /active_minions
 /minions
+#backups + reference files
 /old
 /tests
 

@@ -34,6 +34,9 @@ class Client():
     #CONNECTION SETUP
     self.ConnectedToGameServer = False
     self.ConnectedToSWF = False
+    self.GSCarousel = []  #a list that contains all the successfully received message data from the GameServer to be processed
+    self.SWFCarousel = [] #a list that contains all the successfully received message data from the SWF to be processed.
+
     #connect to GameServer
     try:    
       self.GameServerSocket = socket.socket()
@@ -52,15 +55,25 @@ class Client():
     self.ConnectedToSWF = True
     info(f"Connection from {self.SWFaddr}")
     
-    print("Ready to play!")
+    success("Ready to play!")
+    self.main()
 
   def main(self):
-    """The main loop that the Client.py executes.
+    """The main loop that the Client.py executes. This is when we actually "begin" the client
     This relies on having extensive knowledge on how the turn order works both within the SWF and the GameServer, in order to perfectly capture the required data at the right moment.
     There are technically 4 threaded instances: The send and receive for the GameServer, and the send/receive for the SWFServer
     """   
+    #SETUP
+    threading.Thread(target=self.receive_GameServer).start() #run GameServer receiver async
+    threading.Thread(target=self.receive_SWF).start() #run SWF receiver async
+    while True:
+      """PROCESSING STAGE
+      This is where the data collected from the receivers is accessed, and then processed as needed into the correct variables. It's done here because it reduces the overhead needed within the receivers.
+      This also handles all the sending needed. There should always be some kind of result, and usually sending a message complete a "cycle".
+      """
 
-  def receive_GameServer(self):
+
+  def receive_GameServer(self,*args):
     """The threaded function that receives from the GameServer, and processes accordingly"""
     while self.ConnectedToSWF: #whilst we are able to receive
       try:
@@ -82,16 +95,21 @@ class Client():
           warn("Data is not of proper format! Assuming it's a 'bald' string (possibly as part of a data pack)")
         if MsgType not in self.all_msgtype_GS: #if it is not a recognised form
           error(f"{MsgType} not in predefined list! Make sure that the GameServer MsgType list is updated, or the program code is")
-        elif MsgType == "": #
-          pass
         else:
           error("This should not be triggering: check data:")
           error(f"{MsgType}:{data}")
 
   def send_GameServer(self,msg:str):
-    """The function that is instantaneously called to send something to the GameServer"""
+    """ The function that is instantaneously called to send something to the GameServer
+        Possibly update to include data formatting in this function (i.e params of MsgType, data)
+    """
+    try:
+      self.GameServerSocket.send(msg.encode())
+    except ConnectionResetError:
+      error("GameServer connection has closed")
+    info(f"Sent: {msg}")
 
-  def receive_SWF(self):
+  def receive_SWF(self,*args):
     """The threaded function that receives from the SWF, and processes accordingly."""
     while self.ConnectedToSWF: #whilst we are able to receive
       try:
@@ -104,7 +122,7 @@ class Client():
       The client should ideally:
       * send a message back to the SWF using send_SWF to confirm a message
       * process the received data into Pythonic structures
-      * send a message ont the GameServer (if needed)
+      * send a message onto the GameServer (if needed)
       """
       for message in datas: #for each message (usually one, might end up as multiple if processing goes bad)
         try:
@@ -120,8 +138,6 @@ class Client():
           error(f"{MsgType}:{data}")
 
 
-
-
   def send_SWF(self,msg:str):
     """ Function that sends the message towards the actual game.
         Currently just sends whatever
@@ -132,10 +148,6 @@ class Client():
     except Exception as e:
       error(f"Failed to send data: {e}")
 
-
-
-    
-
 def autorun_flash_file(cmd, arg):
   """Run a Flash file, with the 'cmd' being the path to the Flash Projector, and the 'arg' being the SWF file"""
   result = subprocess.run([cmd, arg], capture_output=False, text=True)
@@ -145,18 +157,10 @@ def autorun_exe(*args):
   cmd = "".join(args)
   result = subprocess.run([cmd], capture_output=False, text=True)
 
-AUTO_RUN_FLASH = True           #do we run the Flash game with this (preferred to reduce time)
-FLASH_PATH = ".\\Flash.exe"      #path to flash exe. This can be the projector OR the converted EXE
-GAME_SERVER_ADDRESS = "127.0.0.1"#address that the GameServer is on
-GAME_SERVER_PORT = 8181          #and the port
-POLICY_SERVER_ADDRESS = "127.0.0.1"#address of the client server
-POLICY_SERVER_PORT = 12345       #port of the client server (as defined in the policy_server)
-IS_SERVER = True                 #is this program the GameServer as well?
-
-if __name__ == "__main__":
+if __name__ == "__main__": #this is the file to run!
   threading.Thread(target=serve_policy).start() #run policy server async
   info("Policy server running..")
-  if IS_SERVER:
+  if IS_SERVER: #if we are the server
     game_srv = GameSocketServer(GAME_SERVER_ADDRESS,GAME_SERVER_PORT)
     threading.Thread(target=game_srv.start_server).start()
     info("Game Server running..")
@@ -216,6 +220,10 @@ BIG QUESTION: how do we communicate between the different components
 ANSWER: Class. even through the functions are threaded, *they can still interact with the Client class*.
 This allows us to create a "carousel" where we update a particular variable with the right data, which is then passed elsewhere.
 Almost like a cohesive system of 4 functions, where each one calmly notifes the others of their result/intention, and then able to resolve.
+
+BIG QUESTION: Why do we need to perfectly time stuff on Actionscript side:
+ANSWER: I really cannot be asked to learn how to create an asynchronus loop within Actionscript. Therefore, it's better to rely on Python (strong suit) as opposed to Actionscript. The beauty of being turn-based is that there are clear, defined points. 
+Additionally, we can through blocking waits wherever, and use dummy "confirm" messages to give us a system where the SWF listens when we want, and sends when we need it.
 
 """
   

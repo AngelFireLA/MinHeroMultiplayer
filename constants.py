@@ -43,6 +43,26 @@ def Colour(colour="reset",mode=1): #-> returns function for mode0 and escape seq
     elif colour == "blue": return Color.BLUE
     else: return 0
 
+#SERVER CONFIG
+
+AUTO_RUN_FLASH = True           #do we run the Flash game with this (preferred to reduce time)
+FLASH_PATH = ".\\Flash.exe"      #path to flash exe. This can be the projector OR the converted EXE
+GAME_SERVER_ADDRESS = "127.0.0.1"#address that the GameServer is on
+GAME_SERVER_PORT = 8181          #and the port
+POLICY_SERVER_ADDRESS = "127.0.0.1"#address of the client server
+POLICY_SERVER_PORT = 12345       #port of the client server (as defined in the policy_server)
+IS_SERVER = True                 #is this program the GameServer as well?
+
+
+
+
+
+
+
+
+
+
+
 #NETWORK PROTOCOLS
 #these define the messages that are allowed as network messages. This means we handle data EXACTLY as we expect and need
 all_msgtype_SWF = [ "backup", #BACKUP message: Will contain the defined layout for the whole level. Sent for archival
