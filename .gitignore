@@ -1,9 +1,8 @@
-
-/.idea
+/__pycache__
 /backups
-default.swf - Raccourci.lnk
-Logs - Raccourci.lnk
-MinHeroMultiplayer.zip
 *.pyc
+/active_minions
 /minions
-/test_clients
+/old
+/tests
+

@@ -1,34 +1,23 @@
 In-work project of bringing pvp battles to Min hero Tower of Sages
 
-You can export your team as text files to share them, and you can also import enemy teams from these files, or from other connected clients if you know their username.
+this is square_nine's variant version, that aims to remove the clutter of batch files and provide the SWF->Client->GameServer multiplayer pipeline
 
 ## How to use
 (0. Install python 3.11 and be sure to tick the box "Add Python to PATH" during the installation on the first screen of the installer, at the bottom)
-(0.1 Install NodeJS)
 1. Download the project and extract it
-2. Open two terminals in the project folder
-3. On the first one run the command 'python policy_server.py'
-4. On the second one run the command 'python server.py'
-(5. If you don't want to use the included modded Flash.Exe : Run the start.bat to build the modded exe=
-6. Go in config.txt and pick a unique username.
-7. Run the Flash.exe
-8. Enjoy (you will have to do steps 2 to 4 each time)
+2. Run "client.py". This will automatically launch the game as well (default.swf).
 
-## How to export my team
-1. Open your settings while in a save
-2. Toggle "Export Team"
-3. Done, your team's minions' files are saved in the "minions" folder (one file per minion)
+## How to export my team (NOT PORTED YET)
+1. Interact with the Minion Manager dude in the lobby
+2. Text file will be created in directory that the client.py file is in.
 
-## How to import a team from files
+## How to import a team from files (NOT PORTED YET)
 (0. Be sure to have followed the usage steps)
 1. Get the files of the 5 minions you want to import
-2. Put them in the "active_minions" folder while also removing any other file in it
-3. Open config.txt and change "target" to be the same as your username
-4. Relaunch the modded exe file
-5. Toggle "Load Enemy" in the settings
-6. Done, your team is now imported
+2. Name this file "enemy_to_import.txt"
+3. When you interact with the MultiGuy, it'll load the team.
 
-## How to import a team from another client
+## How to import a team from another client (NOT PORTED YET)
 (0. Be sure to have followed the usage steps)
 1. Get the username of the client you want to import the team from
 2. Be sure they have exported their team since the server's last restart
@@ -37,9 +26,11 @@ You can export your team as text files to share them, and you can also import en
 5. Toggle "Load Enemy" in the settings
 6. Done, their team is now imported
 
-
-## How to fight an imported team
+## How to fight an imported team (NOT PORTED YET)
 (0. Be sure to have followed the usage steps and have followed the import team steps)
 1. Go to the Lobby
-2. Talk to the NPC protecting the titan egg (the one higher).
+2. Talk to the NPC protecting the titan egg (the one higher). He's "MultiGuy".
 3. This will start the battle, enjoy ! (be sure to save before engaging in a battle as it's still experimental)
+
+## I WANNA HELP!!!!
+currently even I don't know what I'm doing. Join the Min Hero server https://discord.gg/ghCCAAb5Ed and DM me (square_nine) if you're interested (outlining what exactly you want to do).

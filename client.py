@@ -27,7 +27,7 @@ class Client():
     self.minions = []
     self.time_since_team_update = time.time() #time taken to update
     self.currSelectedMove = None    #placeholders for the last move to be able to re-send on packet send error
-    self.currSelectedtargets = None
+    self.currSelectedTargets = None
     self.flags = [] #any extra things to process. Status changes that may occur
 
     
@@ -145,7 +145,7 @@ def autorun_exe(*args):
   cmd = "".join(args)
   result = subprocess.run([cmd], capture_output=False, text=True)
 
-AUTO_RUN_FLASH = False           #do we run the Flash game with this (preferred to reduce time)
+AUTO_RUN_FLASH = True           #do we run the Flash game with this (preferred to reduce time)
 FLASH_PATH = ".\\Flash.exe"      #path to flash exe. This can be the projector OR the converted EXE
 GAME_SERVER_ADDRESS = "127.0.0.1"#address that the GameServer is on
 GAME_SERVER_PORT = 8181          #and the port
@@ -155,15 +155,16 @@ IS_SERVER = True                 #is this program the GameServer as well?
 
 if __name__ == "__main__":
   threading.Thread(target=serve_policy).start() #run policy server async
-  print("Policy server running..")
-  game_srv = GameSocketServer(GAME_SERVER_ADDRESS,GAME_SERVER_PORT)
-  threading.Thread(target=game_srv.start_server).start()
-  print("Game Server running..")
+  info("Policy server running..")
+  if IS_SERVER:
+    game_srv = GameSocketServer(GAME_SERVER_ADDRESS,GAME_SERVER_PORT)
+    threading.Thread(target=game_srv.start_server).start()
+    info("Game Server running..")
   if AUTO_RUN_FLASH: 
     #threading.Thread(target=autorun_exe, args=(FLASH_PATH)).start() #run MH exe async 
     threading.Thread(target=autorun_flash_file, args=(FLASH_PATH, "default.swf")).start() #run MH SWF async
-    print("Game running..")
-  cloint = Client(GameServerAddress=GAME_SERVER_ADDRESS,GameServerPort=GAME_SERVER_PORT,PolicyServerPort=POLICY_SERVER_PORT,PolicyServerAddress=POLICY_SERVER_ADDRESS,
+    info("Game running..")
+  cloint = Client(GAME_SERVER_ADDRESS,GAME_SERVER_PORT,POLICY_SERVER_PORT,POLICY_SERVER_ADDRESS,
          username="test")
   
 
