@@ -1,5 +1,8 @@
+#imports
 import random
 import time
+import subprocess
+from policy_server import serve_policy
 
 from min_hero_classes import Minion, BaseMinion, Gem
 import os
@@ -7,12 +10,12 @@ import socket
 import threading
 import ast
 
+#needed directories
 if not os.path.exists("active_minions"):
     os.makedirs("active_minions")
 
 if not os.path.exists("minions"):
     os.makedirs("minions")
-
 
 #load the content of every file inside the minions folder in a list, the list is order by file last modification
 def load_minions():
@@ -25,11 +28,9 @@ def load_minions():
             minions.append(minion_data)
     return minions
 
-
-
-
 class GameSocketServer:
     def __init__(self, host='localhost', port=12345,):
+        """The single instance of a server that provides the connection between two clients"""
         self.host = host
         self.port = port
         self.server_socket = None
@@ -37,11 +38,11 @@ class GameSocketServer:
         self.clients = {}
 
     def start_server(self):
-
+        """Begins the game server"""
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.host, self.port))
         self.server_socket.listen(5)
-        print("Game server started, waiting for connections...")
+        print(f"Game server started at {self.host}:{self.port}, waiting for connections...")
 
         while True:
             client_socket, addr = self.server_socket.accept()
@@ -49,28 +50,16 @@ class GameSocketServer:
             threading.Thread(target=self.handle_client, args=(client_socket,)).start()
 
     def handle_client(self, client_socket):
-        def sendMove(player_username, target_username, move, targets):
-            # wait 1 second
-            time.sleep(1)
-            current_client = self.clients[player_username]
-            client_socket = current_client.client_socket
-            if "-1" in str(move):
+        """Manages a connection between a Client_socket and the GameServer."""
+        def sendMove(player_username, move, targets):
+            # wait 0.5 seconds. It was 1, but I don't like waiting, so I shortened it.
+            time.sleep(0.5)
+            client_socket = self.clients[player_username].client_socket #access the current socket
+            if "-1" in str(move): #if there is no move
                 print(f"Player {player_username} tried to send an invalid move: {move}")
-            if target_username == current_client.username:
-                print("Sending Move")
-                response = f"%move:{move}#%targets:-1"
-                # response += "&"
-                # if target_client.unfrozen:
-                #     response += "1"
-                # else:
-                #     response += "0"
-                # if target_client.unstunned:
-                #     response += "1"
-                # else:
-                #     response += "0"
-                self.send_data(client_socket, response)
-            else:
+            else: #valid mode
                 # targets are separater by a | with the target tuple's content separated by _
+                #SQUARE_NOTE: can't there just be a "targetID", especially if the move is resolved locally on target device?
                 targets_str = "|".join([f"{target[0]}_{target[1]}" for target in targets])
                 response = f"%move:{move}#%targets:{targets_str}"
                 # response += "&"
@@ -92,20 +81,20 @@ class GameSocketServer:
             target_username = None
             target_client:Client = None
             while True:
-                i+=1
+                i+=1 #message tracker
                 print(f"i: {i}")
-                data = client_socket.recv(8192).decode('utf-8')
-                if "%plzresend" not in data:
-                    print(current_username, data)
-                if not data:
+                data = client_socket.recv(8192).decode('utf-8') #receive data from current socket
+                if "%plzresend" not in data:  #if this wasn't asking for a resend
+                    print(current_username, data)  #debug print the data
+                if not data: #if there is nothing
                     break
-                buffer += data
-                while '\n' in buffer:
-                    time.sleep(0.1)
+                buffer += data #add data to buffer
+                while '\n' in buffer: #whilst there are newlines in buffer (i.e things to resolve)
+                    time.sleep(0.1) #wait a bit
                     line, buffer = buffer.split('\n', 1)
                     if line.startswith("@login:"):
                         username = line.split("@login:")[1]
-                        if username in self.clients:
+                        if username in self.clients: #if this person already connected
                             raise ValueError("Two clients with the same name tried to connect")
                         current_client = Client(username, client_socket)
                         self.clients[username] = current_client
@@ -130,13 +119,6 @@ class GameSocketServer:
                             current_client.time_since_team_update = time.time()
                         else:
                             print("Invalid data format received.")
-                    elif line.startswith("set_minions"):
-                        print("Received request to send back minions.")
-                        self.minions = load_minions()
-                        response = ""
-                        for i, minion in enumerate(self.minions):
-                            response += f"{i}¨{minion}\n"
-                        self.send_data(client_socket, response)
                     elif line.startswith("receive_minions_from"):
                         target_username = line.split(" ")[1]
                         if target_username == current_client.username:
@@ -156,14 +138,6 @@ class GameSocketServer:
                                 print(f"Successfully receieved minions from target client {target_username}.")
                             else:
                                 print(f"Target client {target_username} doesn't exist or doesn't have any minion loaded.")
-                    elif line.startswith("send_minions_to"):
-                        target_username = line.split(" ")[1]
-                        if target_username in self.clients:
-                            target_client = self.clients[target_username]
-                            response = ""
-                            for i, minion in enumerate(current_client.minions):
-                                response += f"{i}¨{minion.save_to_text()}\n"
-                            self.send_data(target_client.client_socket, response)
                     elif line.startswith("||battle:pick_move"):
                         #we get the move separated by a space
                         current_client.current_battle_move = line.split(" ")[1]
@@ -179,7 +153,7 @@ class GameSocketServer:
                         ]
                     elif line.startswith("||battle:send_move"):
                         if target_client.current_battle_move and target_client.targets:
-                            sendMove(current_username, target_username, target_client.current_battle_move, target_client.targets)
+                            sendMove(current_username, target_client.current_battle_move, target_client.targets)
                             target_client.current_battle_move = None
                             target_client.targets = None
                         else:
@@ -189,10 +163,9 @@ class GameSocketServer:
                         self.send_data(target_client.client_socket, line)
                     elif line.startswith("||battle:unfreeze_ally"):
                         self.send_data(target_client.client_socket, line)
-        except ConnectionResetError as e:
+        except ConnectionResetError as e: #client closes
             print(e)
-        finally:
-
+        finally: #closure resolution
             client_socket.close()
             print("closed")
             #remove username with the client_socket form self.clients
@@ -203,6 +176,7 @@ class GameSocketServer:
 
     @staticmethod
     def send_data(client_socket, message):
+        """Utility to send message to target socket"""
         try:
             message_with_delimiter = message + '\n'  # Append newline as a delimiter
             client_socket.sendall(message_with_delimiter.encode('utf-8'))
@@ -211,9 +185,9 @@ class GameSocketServer:
         except Exception as e:
             print(f"Failed to send data: {e}")
 
-
 class Client:
     def __init__(self, username, client_socket):
+        """Data object to store all data about a connected client"""
         self.username = username
         self.client_socket = client_socket
         self.minions = []
@@ -223,6 +197,24 @@ class Client:
         self.unfrozen = False
         self.unstunned = False
 
+
+AUTO_RUN_FLASH = True
+FLASH_PATH = ".\\Flash.exe"
+def autorun_flash_file(cmd, arg):
+    """Run a Flash file, with the 'cmd' being the path to the Flash Projector, and the 'arg' being the SWF file"""
+    result = subprocess.run([cmd, arg], capture_output=False, text=True)
+
+def autorun_exe(*args):
+    """Run a Flash game as an exe"""
+    cmd = "".join(args)
+    result = subprocess.run([cmd], capture_output=False, text=True)
+
 if __name__ == "__main__":
+    #threading.Thread(target=serve_policy).start() #run policy server async
+    #print("Policy server running..")
+    #if AUTO_RUN_FLASH: 
+    #    threading.Thread(target=autorun_exe, args=(FLASH_PATH)).start() #run MH async
+    #    #threading.Thread(target=autorun_exe, args=(FLASH_PATH, "default.swf")).start() #run MH async
+    #    print("Game running..")
     server = GameSocketServer(host="0.0.0.0")
     server.start_server()

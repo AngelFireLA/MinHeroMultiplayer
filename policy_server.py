@@ -1,6 +1,6 @@
 import socket
 
-def serve_policy():
+def serve_policy(ADDR='0.0.0.0',PORT=843):
     policy_request = '<policy-file-request/>\x00'
     policy_response = """<?xml version="1.0"?>
 <!DOCTYPE cross-domain-policy SYSTEM "http://www.adobe.com/xml/dtds/cross-domain-policy.dtd">
@@ -9,7 +9,7 @@ def serve_policy():
 </cross-domain-policy>\x00"""
 
     policy_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    policy_server.bind(('0.0.0.0', 843))
+    policy_server.bind((ADDR, PORT))
     policy_server.listen(5)
     print("Policy server started, waiting for connections...")
 
