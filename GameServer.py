@@ -86,7 +86,7 @@ class GameSocketServer:
             while True:
                 i+=1 #message tracker
                 print(f"i: {i}")
-                data = client_socket.recv(8192).decode('utf-8') #receive data from current socket
+                data = client_socket.recv(8192).decode('utf-8') #receive data from client
                 if "%plzresend" not in data:  #if this wasn't asking for a resend
                     print(current_username, data)  #debug print the data
                 if not data: #if there is nothing

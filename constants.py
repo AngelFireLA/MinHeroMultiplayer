@@ -85,7 +85,7 @@ all_msgtype_GS = [  "backup", #BACKUP message: Contains a defined layout for the
 #the Deliminator Series, the method to split strings such that their content can be used. Currently I'm using whatever I like, but once the "actual" ones are known, swap as needed. Hard-coding is also possible!
 split_order = [   
               ">", #1st: used to overcome buffer issues. Suffix to every message. Split by this to get each message
-              "<", #2nd: used to identify the MessageType. Split by this to get the ("type", "data") list
+              "$$", #2nd: used to identify the MessageType. Split by this to get the ("type", "data") list
               "#", #3rd: used to split the data into several parts. Optional. Split by this to get each bit of data as [item1, item2..]. Actual length known from Message Type
               ]
 

@@ -9,7 +9,8 @@ import time
 import subprocess
 from policy_server import serve_policy #auto-run the policy server
 from GameServer import GameSocketServer #auto-run the GameServer
-from colorist import red,yellow,green,blue,Color #colouring the input
+from sys import exit as exitt
+
 
 from min_hero_classes import Minion, BaseMinion, Gem #class structures for Min Hero items
 import os
@@ -33,9 +34,15 @@ class Client():
     
     #CONNECTION SETUP
     self.ConnectedToGameServer = False
+    self.GLOBAL_EXIT = False #when set to true, delete thyself
     self.ConnectedToSWF = False
-    self.GSCarousel = []  #a list that contains all the successfully received message data from the GameServer to be processed
-    self.SWFCarousel = [] #a list that contains all the successfully received message data from the SWF to be processed.
+    self.GSCarousel = {} #a dictionary that contains all the successfully received message data from the GameServer from each MsgType to be processed
+    self.SWFCarousel = {}#a dictionary that contains all the successfully received message data from the SWF for each MsgType to be processed.
+    #setup using constants
+    for itm in all_msgtype_GS:
+      self.GSCarousel[itm] = None
+    for itm in all_msgtype_SWF:
+      self.SWFCarousel[itm] = None
 
     #connect to GameServer
     try:    
@@ -50,10 +57,10 @@ class Client():
     self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.server_socket.bind((SWFServerAddress, SWFServerPort))
     self.server_socket.listen(2)
-    info("SWFServer created! Waiting for SWF to connect to..")
+    info("SWFServer created! Waiting for SWF to connect (press 'Play')")
     self.SWFSocket, self.SWFaddr = self.server_socket.accept() #we know the first game to connect MUST be the one!
     self.ConnectedToSWF = True
-    info(f"Connection from {self.SWFaddr}")
+    info(f"SWF file connection from {self.SWFaddr}")
     
     success("Ready to play!")
     self.main()
@@ -64,22 +71,24 @@ class Client():
     There are technically 4 threaded instances: The send and receive for the GameServer, and the send/receive for the SWFServer
     """   
     #SETUP
-    threading.Thread(target=self.receive_GameServer).start() #run GameServer receiver async
+    #threading.Thread(target=self.receive_GameServer).start() #run GameServer receiver async
     threading.Thread(target=self.receive_SWF).start() #run SWF receiver async
     while True:
       """PROCESSING STAGE
       This is where the data collected from the receivers is accessed, and then processed as needed into the correct variables. It's done here because it reduces the overhead needed within the receivers.
       This also handles all the sending needed. There should always be some kind of result, and usually sending a message complete a "cycle".
       """
-
+      pass
 
   def receive_GameServer(self,*args):
     """The threaded function that receives from the GameServer, and processes accordingly"""
-    while self.ConnectedToSWF: #whilst we are able to receive
+    while self.ConnectedToGameServer: #whilst we are able to receive
       try:
-        datas = self.SWFSocket.recv(16384).decode().split(self.split_order[0]) #receive, decode and process block into message(s). Will fail if bad data
+        datas = self.SWFSocket.recv(16384).decode().split(split_order[0]) #receive, decode and process block into message(s). Will fail if bad data
       except:
-        error(f"Bad data received!")
+        warn(f"Bad data received!")
+        datas = [split_order[1]]
+        self.ConnectedToGameServer = False
       """
       GAMESERVER -> CLIENT
       (messages from the GameServer towards the client)
@@ -90,11 +99,20 @@ class Client():
       """
       for message in datas: #for each message (usually one, might end up as multiple if processing goes bad)
         try:
-          MsgType, data = message.split(self.split_order[1])
+          big_dat = message.split(split_order[1])
+          MsgType = big_dat[0]
+          data = big_dat[1:]
         except:
-          warn("Data is not of proper format! Assuming it's a 'bald' string (possibly as part of a data pack)")
-        if MsgType not in self.all_msgtype_GS: #if it is not a recognised form
-          error(f"{MsgType} not in predefined list! Make sure that the GameServer MsgType list is updated, or the program code is")
+          MsgType = "NONONONONO"
+          pass  #man I can't keep writing edge cases888
+        if MsgType == "NONONONONO":
+          error("Brwoken")
+        elif MsgType == "playerTeamDump":
+          all_minions = data
+          with open("minion_export_current.txt","w") as foile:
+            for minion in all_minions:
+              foile.write(minion+"\n")
+          success("All minions are received successfully! Check 'minion_export_current.txt'.")
         else:
           error("This should not be triggering: check data:")
           error(f"{MsgType}:{data}")
@@ -113,9 +131,12 @@ class Client():
     """The threaded function that receives from the SWF, and processes accordingly."""
     while self.ConnectedToSWF: #whilst we are able to receive
       try:
-        datas = self.SWFSocket.recv(16384).decode().split(self.split_order[0]) #receive, decode and process block into message(s). Will fail if bad data
+        datas = self.SWFSocket.recv(16384).decode().split(split_order[0]) #receive, decode and process block into message(s). Will fail if bad data
+        #print(datas)
       except:
-        error(f"Bad data received!")
+        warn(f"Bad data received!")
+        datas = [split_order[1]]
+        self.ConnectedToSWF = False
       """
       SWF -> CLIENT
       (messages from the SWF towards the client)
@@ -126,13 +147,21 @@ class Client():
       """
       for message in datas: #for each message (usually one, might end up as multiple if processing goes bad)
         try:
-          MsgType, data = message.split(self.split_order[1])
+          big_data = message.split(split_order[1])
+          MsgType = big_data[0]
+          data = big_data[1:]
         except:
           warn("Data is not of proper format! Assuming it's a 'bald' string (possibly as part of a data pack)")
-        if MsgType not in self.all_msgtype_SWF: #if it is not a recognised form
-          error(f"{MsgType} not in predefined list! Make sure that the SWF MsgType list is updated, or the program code is")
-        elif MsgType == "teamExport": #CURRENT MINION LOADOUT IS EXPORTED
-          pass
+        if MsgType == "playerTeamDump": #CURRENT MINION LOADOUT IS EXPORTED
+          all_minions = data
+          for mini in all_minions: info(mini)
+          success("Received a minion dump!")
+        elif MsgType =="" and data ==[]:
+          error("Blank data due to connection close, exit")
+          self.GLOBAL_EXIT = True
+          del self
+          exitt()
+
         else:
           error("This should not be triggering, check data:")
           error(f"{MsgType}:{data}")
@@ -143,15 +172,15 @@ class Client():
         Currently just sends whatever
         Possibly split parameter for code, payload like I did with Formula Gun""" 
     try:
-      msg.encode('utf-8')
+      self.SWFSocket.send(msg.encode('utf-8'))
       info(f"Sent data: {msg}")
     except Exception as e:
       error(f"Failed to send data: {e}")
 
+
 def autorun_flash_file(cmd, arg):
   """Run a Flash file, with the 'cmd' being the path to the Flash Projector, and the 'arg' being the SWF file"""
   result = subprocess.run([cmd, arg], capture_output=False, text=True)
-
 def autorun_exe(*args):
   """Run a Flash game as an exe"""
   cmd = "".join(args)
@@ -226,8 +255,4 @@ ANSWER: I really cannot be asked to learn how to create an asynchronus loop with
 Additionally, we can through blocking waits wherever, and use dummy "confirm" messages to give us a system where the SWF listens when we want, and sends when we need it.
 
 """
-  
-  
-  
-  
   

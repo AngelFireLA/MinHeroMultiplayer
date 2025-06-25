@@ -9,7 +9,8 @@ this is square_nine's variant version, that aims to remove the clutter of batch 
 
 ## How to export my team (NOT PORTED YET)
 1. Interact with the Minion Manager dude in the lobby
-2. Text file will be created in directory that the client.py file is in.
+2. When you leave, a text file will be created in directory that the client.py file is in.
+3. This is stored as a JSON file containing the properties
 
 ## How to import a team from files (NOT PORTED YET)
 (0. Be sure to have followed the usage steps)
