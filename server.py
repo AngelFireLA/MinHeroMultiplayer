@@ -130,13 +130,6 @@ class GameSocketServer:
                             current_client.time_since_team_update = time.time()
                         else:
                             print("Invalid data format received.")
-                    elif line.startswith("set_minions"):
-                        print("Received request to send back minions.")
-                        self.minions = load_minions()
-                        response = ""
-                        for i, minion in enumerate(self.minions):
-                            response += f"{i}¨{minion}\n"
-                        self.send_data(client_socket, response)
                     elif line.startswith("receive_minions_from"):
                         target_username = line.split(" ")[1]
                         if target_username == current_client.username:
@@ -156,14 +149,7 @@ class GameSocketServer:
                                 print(f"Successfully receieved minions from target client {target_username}.")
                             else:
                                 print(f"Target client {target_username} doesn't exist or doesn't have any minion loaded.")
-                    elif line.startswith("send_minions_to"):
-                        target_username = line.split(" ")[1]
-                        if target_username in self.clients:
-                            target_client = self.clients[target_username]
-                            response = ""
-                            for i, minion in enumerate(current_client.minions):
-                                response += f"{i}¨{minion.save_to_text()}\n"
-                            self.send_data(target_client.client_socket, response)
+
                     elif line.startswith("||battle:pick_move"):
                         #we get the move separated by a space
                         current_client.current_battle_move = line.split(" ")[1]
